@@ -1,0 +1,16 @@
+project build_f3 is
+
+for source_dirs use ("source");
+
+for object_dir use "object";
+
+for exec_dir use "binary";
+
+-- enable more warnings: "-gnatwa" --
+package Compiler is
+  for Default_Switches ("Ada") use ("-O2", "-gnata", "-gnatwa");
+end Compiler;
+
+for main use ("f3.adb");
+
+end build_f3;
