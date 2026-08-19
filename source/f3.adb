@@ -1,15 +1,17 @@
-with Ada.Text_IO;
 with Ada.Command_Line;
 with Forecasts;
+with Message_Handling;
 
 procedure F3 is
+
+use Message_Handling;
 
 begin
 
   if Ada.Command_Line.Argument_Count = 1 then
-    Ada.Text_IO.Put_Line("This is the first argument:" & Ada.Command_Line.Argument(1));
+    Print_Info("This is the first argument:" & Ada.Command_Line.Argument(1));
   else
-    Ada.Text_IO.Put_Line("Error: Only one argument expected (name of the directory that contains the files defining predictions and outcomes).");
+    Print_Error("Only one argument expected (name of the directory that contains the files defining predictions and outcomes).");
     return;
   end if;
 
