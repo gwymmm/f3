@@ -22,6 +22,16 @@ private
 
   package Floats is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Float_Type, "=" => "=");
 
+  type Forecasting_Score_Record is
+    record
+      Brier_Score: Float_Type;
+
+      -- three component decomposition
+      Variability_Index: Float_Type;
+      Calibration_Index: Float_Type;
+      Discrimination_Index: Float_Type;
+    end record;
+
   type Forecasting_Question is
     record
       ID: Ada.Strings.Unbounded.Unbounded_String;
@@ -34,6 +44,7 @@ private
     record
       Questions_Answered: Boolean;
       Challenge_Questions: Forecasting_Questions.List;
+      Score_Results: Forecasting_Score_Record;
     end record;
 
   package Challenges is new Ada.Containers.Vectors(Index_Type => Positive,
@@ -48,11 +59,16 @@ private
   package Table_Index_To_Name_Vectors is new Ada.Containers.Vectors(Index_Type => Positive,
     Element_Type => Ada.Strings.Unbounded.Unbounded_String, "=" => Ada.Strings.Unbounded."=");
 
+  package Forecasting_Score_Records is new Ada.Containers.Vectors(Index_Type => Positive,
+    Element_Type => Forecasting_Score_Record, "=" => "=");
+
   type Forecasting_Challenge_Table_Type is
     record
 
       Forecaster_Predictions: Challenge_Table_Columns.Vector;
       Outcomes: Challenges.Vector;
+
+      Overall_Score_Results: Forecasting_Score_Records.Vector;
 
       Forecaster_Name_To_Idx_Map: Name_To_Table_Index_Maps.Map;
       Challenge_Name_To_Idx_Map: Name_To_Table_Index_Maps.Map;
