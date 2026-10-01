@@ -7,7 +7,13 @@ package Forecasts is
 
   type Program_Status is (Success, Failure);
 
-  procedure Evaluate_Forecasts(Input_Folder_Name: in String; Status: out Program_Status);
+  type Program_Parameter_Type is
+    record
+      Current_Program_Status: Program_Status := Success;
+      Debug: Boolean;
+    end record;
+
+  procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type);
 
 private
 
@@ -17,6 +23,24 @@ private
   procedure Print_Error(Error_Message: in String);
   procedure Print_Info(Info_Message: in String);
   procedure Print_More(Additional_Info: in String);
+  procedure Print_Delimiter;
+
+  type Prediction_File_Metadata_Type is
+    record
+      Input_File_Name: Ada.Strings.Unbounded.Unbounded_String;
+      Challenge_Name: Ada.Strings.Unbounded.Unbounded_String;
+      Forecaster_Name: Ada.Strings.Unbounded.Unbounded_String;
+    end record;
+
+  package Prediction_Files_Data is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Prediction_File_Metadata_Type, "=" => "=");
+
+  type Outcome_File_Metadata_Type is
+    record
+      Input_File_Name: Ada.Strings.Unbounded.Unbounded_String;
+      Challenge_Name: Ada.Strings.Unbounded.Unbounded_String;
+    end record;
+
+  package Outcome_Files_Data is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Outcome_File_Metadata_Type, "=" => "=");
 
   type Float_Type is digits 5;
 

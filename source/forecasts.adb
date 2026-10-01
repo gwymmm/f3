@@ -5,7 +5,8 @@ with Forecasts.Lexer;
 
 package body Forecasts is
 
-  procedure Search_For_Files_Recursively(Folder_Name: in String; Relevant_Extension: in String; List_Of_File_Names: in out Strings.List) is
+  procedure Search_For_Files_Recursively(Folder_Name: in String; Relevant_Extension: in String; List_Of_File_Names: in out Strings.List;
+    Debug: in Boolean) is
 
     use Ada.Directories;
     use Ada.Directories.Hierarchical_File_Names;
@@ -24,13 +25,17 @@ package body Forecasts is
 
     Start_Search(File_Search, Folder_Name, "", File_Filter);
 
-    Print_Info("Searching for files in " & Folder_Name & " folder...");
+    if Debug then
+      Print_Info("Searching for files in " & Folder_Name & " folder...");
+    end if;
 
     while More_Entries(File_Search) loop
       Get_Next_Entry(File_Search, Found_File);
       if Extension(Full_Name(Found_File)) = Relevant_Extension then
         Strings.Append(List_Of_File_Names, To_Unbounded_String(Full_Name(Found_File)));
-        Print_More("File found: " & Full_Name(Found_File));
+        if Debug then
+            Print_Info("Relevant file found: " & Full_Name(Found_File));
+        end if;
       end if;
     end loop;
 
@@ -43,8 +48,10 @@ package body Forecasts is
       if Is_Parent_Directory_Name(Simple_Name(Found_Directory)) or Is_Current_Directory_Name(Simple_Name(Found_Directory)) then
         null;
       else
-        Print_Info("Notable directory found: " & Full_Name(Found_Directory));
-        Search_For_Files_Recursively(Full_Name(Found_Directory), Relevant_Extension, List_Of_File_Names);
+        if Debug then
+          Print_Info("Continue search in directory: " & Full_Name(Found_Directory));
+        end if;
+        Search_For_Files_Recursively(Full_Name(Found_Directory), Relevant_Extension, List_Of_File_Names, Debug);
       end if;
 
     end loop;
@@ -52,30 +59,13 @@ package body Forecasts is
   end Search_For_Files_Recursively;
 
 
-  procedure Evaluate_Forecasts(Input_Folder_Name: in String; Status: out Program_Status) is
+  procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type) is
     use Ada.Directories;
 
     Prediction_File_Names: Strings.List;
     Outcome_File_Names: Strings.List;
 
     Forecasting_Challenge_Table: Forecasting_Challenge_Table_Type;
-
-    type Prediction_File_Metadata_Type is
-      record
-        Input_File_Name: Ada.Strings.Unbounded.Unbounded_String;
-        Challenge_Name: Ada.Strings.Unbounded.Unbounded_String;
-        Forecaster_Name: Ada.Strings.Unbounded.Unbounded_String;
-      end record;
-
-    package Prediction_Files_Data is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Prediction_File_Metadata_Type, "=" => "=");
-
-    type Outcome_File_Metadata_Type is
-      record
-        Input_File_Name: Ada.Strings.Unbounded.Unbounded_String;
-        Challenge_Name: Ada.Strings.Unbounded.Unbounded_String;
-      end record;
-
-    package Outcome_Files_Data is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Outcome_File_Metadata_Type, "=" => "=");
 
     Outcome_File_Metadata: Outcome_Files_Data.List;
     Prediction_File_Metadata: Prediction_Files_Data.List;
@@ -84,23 +74,40 @@ package body Forecasts is
 
   begin
 
+    if Program_Parameter.Debug then
+      Print_Info("Checking input folder...");
+    end if;
+
     if not Exists(Input_Folder_Name) then
       Print_Error("Directory does not exist: " & Input_Folder_Name);
-      Status := Failure;
+      Program_Parameter.Current_Program_Status := Failure;
       return;
     end if;
 
     if Kind(Input_Folder_Name) /= Directory then
       Print_Error(Input_Folder_Name & " is not a directory.");
-      Status := Failure;
+      Program_Parameter.Current_Program_Status := Failure;
       return;
     end if;
 
-    Print_Info("Folder ready to be processed: " & Input_Folder_Name);
-
     -- gather input files
-    Search_For_Files_Recursively(Input_Folder_Name, "Predictions", Prediction_File_Names);
-    Search_For_Files_Recursively(Input_Folder_Name, "Outcomes", Outcome_File_Names);
+    if Program_Parameter.Debug then
+      Print_Delimiter;
+      Print_Info("Gathering prediction files in folder: " & Input_Folder_Name);
+    end if;
+
+    Search_For_Files_Recursively(Input_Folder_Name, "Predictions", Prediction_File_Names, Program_Parameter.Debug);
+
+    if Program_Parameter.Debug then
+      Print_Delimiter;
+      Print_Info("Gathering outcome files in folder: " & Input_Folder_Name);
+    end if;
+
+    Search_For_Files_Recursively(Input_Folder_Name, "Outcomes", Outcome_File_Names, Program_Parameter.Debug);
+
+    if Program_Parameter.Debug then
+      Print_Delimiter;
+    end if;
 
     for C in Outcome_File_Names.Iterate loop
       --Print_Info("Outcome File listed: " & Ada.Strings.Unbounded.To_String(Outcome_File_Names(C)) );
@@ -110,12 +117,20 @@ package body Forecasts is
       begin
         Temp_Data.Input_File_Name := Outcome_File_Names(C);
         Temp_Data.Challenge_Name := Ada.Strings.Unbounded.To_Unbounded_String(Temp_Base_Name);
+
+        if Ada.Strings.Unbounded.Index(Temp_Data.Challenge_Name, "-") > 0 then
+          Print_Error("Character '-' not allowed in name of '.Outcomes' file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name) );
+          Print_More("Character '-' is the delimiter between challenge and forecast name in '.Predictions' files");
+          Program_Parameter.Current_Program_Status := Failure;
+          return;
+        end if;
+
         Outcome_Files_Data.Append(Outcome_File_Metadata, Temp_Data);
 
         if Name_To_Table_Index_Maps.Contains(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => Temp_Data.Challenge_Name) then
-          Print_Error("Challenge with name '" & Temp_Base_Name & "' already defined");
-          Print_More("Duplicate found in input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
-          Status := Failure;
+          Print_Error("Duplicate found in input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
+          Print_More("Challenge with name '" & Temp_Base_Name & "' already defined");
+          Program_Parameter.Current_Program_Status := Failure;
           return;
         else
           Name_To_Table_Index_Maps.Insert(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map,
@@ -133,7 +148,7 @@ package body Forecasts is
 
     -- populate forecast table
 
-    Status := Success;
+    Program_Parameter.Current_Program_Status := Success;
     return;
 
   end Evaluate_Forecasts;
@@ -155,5 +170,12 @@ package body Forecasts is
   begin
     Ada.Text_IO.Put_Line("    " & Additional_Info);
   end Print_More;
+
+  procedure Print_Delimiter is
+  begin
+    Ada.Text_IO.New_Line;
+    Ada.Text_IO.Put_Line("    ####  COMPUTATION SECTION  ####");
+    Ada.Text_IO.New_Line;
+  end Print_Delimiter;
 
 end Forecasts;

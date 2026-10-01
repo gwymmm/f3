@@ -7,7 +7,7 @@ procedure F3 is
 use Ada.Text_IO;
 use Forecasts;
 
-Returned_Status: Forecasts.Program_Status;
+Program_Parameter: Forecasts.Program_Parameter_Type;
 
 begin
 
@@ -17,11 +17,11 @@ begin
     return;
   end if;
 
+  Program_Parameter.Debug := True;
 
-  Evaluate_Forecasts(Ada.Command_Line.Argument(1), Returned_Status);
+  Evaluate_Forecasts(Ada.Command_Line.Argument(1), Program_Parameter);
 
-
-  if Returned_Status = Success then
+  if Program_Parameter.Current_Program_Status = Success then
     Ada.Command_Line.Set_Exit_Status(Ada.Command_Line.Success);
   else
     Ada.Command_Line.Set_Exit_Status(Ada.Command_Line.Failure);
