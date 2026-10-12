@@ -20,6 +20,8 @@ private
   package Strings is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Ada.Strings.Unbounded.Unbounded_String,
     "=" => Ada.Strings.Unbounded."=");
 
+  function Split(U_String: in Ada.Strings.Unbounded.Unbounded_String; Pattern: in String) return Strings.List;
+
   procedure Print_Error(Error_Message: in String);
   procedure Print_Info(Info_Message: in String);
   procedure Print_More(Additional_Info: in String);

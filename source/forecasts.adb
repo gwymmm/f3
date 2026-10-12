@@ -2,6 +2,7 @@ with Ada.Directories;
 with Ada.Directories.Hierarchical_File_Names;
 with Ada.Text_IO;
 with Forecasts.Lexer;
+with Forecasts.Test;
 
 package body Forecasts is
 
@@ -57,6 +58,70 @@ package body Forecasts is
     end loop;
 
   end Search_For_Files_Recursively;
+
+
+  function Split(U_String: in Ada.Strings.Unbounded.Unbounded_String; Pattern: in String) return Strings.List is
+
+    Result: Strings.List;
+    Current_Index: Natural;
+    Current_Left_Border: Positive := 1;
+    Current_Right_Border: Natural;
+    Pattern_Length: constant Natural := Pattern'Length;
+
+    use Ada.Strings.Unbounded;
+    Temp_String: Unbounded_String := Null_Unbounded_String;
+    U_String_Length: constant Natural := Length(U_String);
+
+  begin
+
+    if Length(U_String) = 0 then
+      return Result;
+    end if;
+
+    Current_Index := Index(U_String, Pattern);
+
+    if Current_Index = 0 then
+      return Result;
+    end if;
+
+-- length >= 1 and index >= 1
+
+    loop
+
+      pragma Assert (Current_Index >= Current_Left_Border);
+      Current_Right_Border := Current_Index - 1;
+
+      if Current_Right_Border < Current_Left_Border then
+        null;
+      elsif Current_Right_Border = Current_Left_Border then
+        Append(Temp_String, Element(U_String, Current_Left_Border) );
+      else -- Current_Right_Border > Current_Left_Border
+        Unbounded_Slice(Source => U_String, Target => Temp_String, Low => Current_Left_Border, High => Current_Right_Border);
+      end if;
+
+      Strings.Append(Result, Temp_String);
+      Temp_String := Null_Unbounded_String;
+      Current_Left_Border := Current_Index + Pattern_Length;
+
+      --exit when Current_Left_Border > U_String_Length;
+
+      if Current_Left_Border > U_String_Length then
+        Strings.Append(Result, Temp_String);
+        exit;
+      end if;
+
+      Current_Index := Index(U_String, Pattern, From => Current_Left_Border);
+
+      if Current_Index = 0 then
+        Unbounded_Slice(Source => U_String, Target => Temp_String, Low => Current_Left_Border, High => U_String_Length);
+        Strings.Append(Result, Temp_String);
+        exit;
+      end if;
+
+    end loop;
+
+    return Result;
+  end Split;
 
 
   procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type) is
@@ -145,6 +210,12 @@ package body Forecasts is
     for C in Prediction_File_Names.Iterate loop
       Print_Info("Prediction File listed: " & Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
     end loop;
+
+    if Program_Parameter.Debug then
+      Print_Delimiter;
+    end if;
+
+    Test.Test_String_Split;
 
     -- populate forecast table
 
