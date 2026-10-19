@@ -11,7 +11,6 @@ package body Forecasts is
 
     use Ada.Directories;
     use Ada.Directories.Hierarchical_File_Names;
-    use Strings;
     use Ada.Strings.Unbounded;
 
     File_Search: Search_Type;
@@ -102,8 +101,6 @@ package body Forecasts is
       Strings.Append(Result, Temp_String);
       Temp_String := Null_Unbounded_String;
       Current_Left_Border := Current_Index + Pattern_Length;
-
-      --exit when Current_Left_Border > U_String_Length;
 
       if Current_Left_Border > U_String_Length then
         Strings.Append(Result, Temp_String);
@@ -207,15 +204,60 @@ package body Forecasts is
 
     end loop;
 
-    for C in Prediction_File_Names.Iterate loop
-      Print_Info("Prediction File listed: " & Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
-    end loop;
-
     if Program_Parameter.Debug then
+      Test.Print_Outcome_Files_List(Outcome_File_Metadata);
       Print_Delimiter;
     end if;
 
-    Test.Test_String_Split;
+
+    for C in Prediction_File_Names.Iterate loop
+      -- Print_Info("Prediction File listed: " & Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
+
+        declare
+          Temp_Data: Prediction_File_Metadata_Type;
+          Temp_Base_Name: String := Ada.Directories.Base_Name( Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
+          String_Split_Result: Strings.List;
+          use type Ada.Containers.Count_Type;
+          use type Ada.Strings.Unbounded.Unbounded_String;
+        begin
+          Temp_Data.Input_File_Name := Prediction_File_Names(C);
+          String_Split_Result := Split( Ada.Strings.Unbounded.To_Unbounded_String(Temp_Base_Name), "-");
+
+          if Strings.Length(String_Split_Result) /= 2 and then
+            ( Strings.First_Element(String_Split_Result) /= Ada.Strings.Unbounded.Null_Unbounded_String and
+              Strings.Last_Element(String_Split_Result) /= Ada.Strings.Unbounded.Null_Unbounded_String) then
+            Print_Error("Wrong name of input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
+            Print_More("Expected name format for prediction files is: Challenge_Name-Forecaster_Name.Predictions");
+            Program_Parameter.Current_Program_Status := Failure;
+            return;
+          end if;
+
+          Temp_Data.Challenge_Name := Strings.First_Element(String_Split_Result);
+          Temp_Data.Forecaster_Name := Strings.Last_Element(String_Split_Result);
+          Prediction_Files_Data.Append(Prediction_File_Metadata, Temp_Data);
+
+        if not Name_To_Table_Index_Maps.Contains(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => Temp_Data.Challenge_Name) then
+          Print_Error("Unknown challenge name in input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
+          Print_More("No outcomes file exists for challenge with name '" & Ada.Strings.Unbounded.To_String(Temp_Data.Challenge_Name));
+          Program_Parameter.Current_Program_Status := Failure;
+          return;
+        end if;
+
+        if not Name_To_Table_Index_Maps.Contains(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map, Key => Temp_Data.Forecaster_Name) then
+          Name_To_Table_Index_Maps.Insert(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map,
+            Key => Temp_Data.Forecaster_Name,
+            New_Item => DUMMY_INDEX);
+        end if;
+      end;
+
+    end loop;
+
+    if Program_Parameter.Debug then
+      Test.Print_Prediction_Files_List(Prediction_File_Metadata);
+      Print_Delimiter;
+    end if;
+
+    --Test.Test_String_Split;
 
     -- populate forecast table
 

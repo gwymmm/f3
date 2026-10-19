@@ -2,7 +2,7 @@ with Ada.Text_IO;
 
 package body Forecasts.Test is
 
-  procedure Print_Strings_List(S_List: Strings.List) is
+  procedure Print_Strings_List(S_List: in Strings.List) is
     use Ada.Text_IO;
     use Ada.Strings.Unbounded;
   begin
@@ -10,6 +10,29 @@ package body Forecasts.Test is
       Put( To_String(E) & ", ");
     end loop;
   end Print_Strings_List;
+
+  procedure Print_Outcome_Files_List(Outcome_Files_List: in Outcome_Files_Data.List) is
+    use Ada.Text_IO;
+    use Ada.Strings.Unbounded;
+  begin
+    Put_Line("Outcome files ready to be processed:"); New_Line;
+    for E of Outcome_Files_List loop
+      Put_Line( "Outcome file " & To_String(E.Input_File_Name) );
+      Put_Line( "  with challenge name: " & To_String(E.Challenge_Name) );
+    end loop;
+  end Print_Outcome_Files_List;
+
+  procedure Print_Prediction_Files_List(Prediction_Files_List: in Prediction_Files_Data.List) is
+    use Ada.Text_IO;
+    use Ada.Strings.Unbounded;
+  begin
+    Put_Line("Prediction files ready to be processed:"); New_Line;
+    for E of Prediction_Files_List loop
+      Put_Line( "Prediction file " & To_String(E.Input_File_Name) );
+      Put_Line( "  with challenge name: " & To_String(E.Challenge_Name) );
+      Put_Line( "  with forecaster name: " & To_String(E.Forecaster_Name) );
+    end loop;
+  end Print_Prediction_Files_List;
 
 
   procedure Test_String_Split is

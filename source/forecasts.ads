@@ -69,6 +69,7 @@ private
   type Forecasting_Challenge_Type is
     record
       Questions_Answered: Boolean;
+      Prediction_File_Name: Ada.Strings.Unbounded.Unbounded_String;
       Challenge_Questions: Forecasting_Questions.List;
       Score_Results: Forecasting_Score_Record;
     end record;
