@@ -13,7 +13,13 @@ package Forecasts is
       Debug: Boolean;
     end record;
 
+  type Forecasting_Challenge_Table_Type is private;
+
   procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type);
+
+  procedure Init_Forecasting_Challenge_Table(Input_Folder_Name: in String;
+                                             Program_Parameter: in out Program_Parameter_Type;
+                                             Forecasting_Challenge_Table: out Forecasting_Challenge_Table_Type);
 
 private
 

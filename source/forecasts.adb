@@ -122,12 +122,25 @@ package body Forecasts is
 
 
   procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type) is
+    Forecasting_Challenge_Table: Forecasting_Challenge_Table_Type;
+  begin
+
+    Init_Forecasting_Challenge_Table(Input_Folder_Name, Program_Parameter, Forecasting_Challenge_Table);
+
+    if Program_Parameter.Current_Program_Status = Failure then
+      return;
+    end if;
+
+  end Evaluate_Forecasts;
+
+
+  procedure Init_Forecasting_Challenge_Table(Input_Folder_Name: in String;
+                                             Program_Parameter: in out Program_Parameter_Type;
+                                             Forecasting_Challenge_Table: out Forecasting_Challenge_Table_Type) is
     use Ada.Directories;
 
     Prediction_File_Names: Strings.List;
     Outcome_File_Names: Strings.List;
-
-    Forecasting_Challenge_Table: Forecasting_Challenge_Table_Type;
 
     Outcome_File_Metadata: Outcome_Files_Data.List;
     Prediction_File_Metadata: Prediction_Files_Data.List;
@@ -223,11 +236,12 @@ package body Forecasts is
           Temp_Data.Input_File_Name := Prediction_File_Names(C);
           String_Split_Result := Split( Ada.Strings.Unbounded.To_Unbounded_String(Temp_Base_Name), "-");
 
-          if Strings.Length(String_Split_Result) /= 2 and then
-            ( Strings.First_Element(String_Split_Result) /= Ada.Strings.Unbounded.Null_Unbounded_String and
-              Strings.Last_Element(String_Split_Result) /= Ada.Strings.Unbounded.Null_Unbounded_String) then
+          if Strings.Length(String_Split_Result) /= 2 or else
+            ( Strings.First_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String or
+              Strings.Last_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String) then
             Print_Error("Wrong name of input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
-            Print_More("Expected name format for prediction files is: Challenge_Name-Forecaster_Name.Predictions");
+            Print_More("Expected name format for prediction files is: Challenge_Name-Forecaster_Name.Predictions " &
+              "(use character '-' as delimiter)");
             Program_Parameter.Current_Program_Status := Failure;
             return;
           end if;
@@ -238,7 +252,7 @@ package body Forecasts is
 
         if not Name_To_Table_Index_Maps.Contains(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => Temp_Data.Challenge_Name) then
           Print_Error("Unknown challenge name in input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
-          Print_More("No outcomes file exists for challenge with name '" & Ada.Strings.Unbounded.To_String(Temp_Data.Challenge_Name));
+          Print_More("No outcomes file exists for challenge with name '" & Ada.Strings.Unbounded.To_String(Temp_Data.Challenge_Name) & "'");
           Program_Parameter.Current_Program_Status := Failure;
           return;
         end if;
@@ -264,7 +278,7 @@ package body Forecasts is
     Program_Parameter.Current_Program_Status := Success;
     return;
 
-  end Evaluate_Forecasts;
+  end Init_Forecasting_Challenge_Table;
 
 
   procedure Print_Error(Error_Message: in String) is
