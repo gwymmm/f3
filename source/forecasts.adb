@@ -120,7 +120,7 @@ package body Forecasts is
     return Result;
   end Split;
 
-
+--##########################################################################################################################
   procedure Evaluate_Forecasts(Input_Folder_Name: in String; Program_Parameter: in out Program_Parameter_Type) is
     Forecasting_Challenge_Table: Forecasting_Challenge_Table_Type;
   begin
@@ -133,7 +133,7 @@ package body Forecasts is
 
   end Evaluate_Forecasts;
 
-
+--##########################################################################################################################
   procedure Init_Forecasting_Challenge_Table(Input_Folder_Name: in String;
                                              Program_Parameter: in out Program_Parameter_Type;
                                              Forecasting_Challenge_Table: out Forecasting_Challenge_Table_Type) is
@@ -145,7 +145,21 @@ package body Forecasts is
     Outcome_File_Metadata: Outcome_Files_Data.List;
     Prediction_File_Metadata: Prediction_Files_Data.List;
 
-    DUMMY_INDEX: Positive := Positive'Last;
+    DUMMY_INDEX: constant Positive := Positive'Last;
+
+    Number_Of_Challenges: Ada.Containers.Count_Type;
+    Number_Of_Forecasters: Ada.Containers.Count_Type;
+
+    Initial_Score_Record: Forecasting_Score_Record;
+
+    Initial_Forecasting_Challenge: constant Forecasting_Challenge_Type := (Questions_Answered => False,
+      Prediction_File_Name => Ada.Strings.Unbounded.To_Unbounded_String("???"),
+      Challenge_Questions => Forecasting_Questions.Empty_List,
+      Score_Results => Initial_Score_Record);
+
+    Initial_Challenge_Table_Column: Challenges.Vector;
+
+    use type Ada.Containers.Count_Type;
 
   begin
 
@@ -184,6 +198,12 @@ package body Forecasts is
       Print_Delimiter;
     end if;
 
+    if Strings.Length(Outcome_File_Names) = 0 then
+      Print_Error("No outcome files found in input directory");
+      Program_Parameter.Current_Program_Status := Failure;
+      return;
+    end if;
+
     for C in Outcome_File_Names.Iterate loop
       --Print_Info("Outcome File listed: " & Ada.Strings.Unbounded.To_String(Outcome_File_Names(C)) );
       declare
@@ -213,7 +233,7 @@ package body Forecasts is
             New_Item => DUMMY_INDEX);
         end if;
 
-      end;
+      end; -- end declare
 
     end loop;
 
@@ -222,33 +242,37 @@ package body Forecasts is
       Print_Delimiter;
     end if;
 
+    if Strings.Length(Prediction_File_Names) = 0 then
+      Print_Error("No prediction files found in input directory");
+      Program_Parameter.Current_Program_Status := Failure;
+      return;
+    end if;
 
     for C in Prediction_File_Names.Iterate loop
       -- Print_Info("Prediction File listed: " & Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
 
-        declare
-          Temp_Data: Prediction_File_Metadata_Type;
-          Temp_Base_Name: String := Ada.Directories.Base_Name( Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
-          String_Split_Result: Strings.List;
-          use type Ada.Containers.Count_Type;
-          use type Ada.Strings.Unbounded.Unbounded_String;
-        begin
-          Temp_Data.Input_File_Name := Prediction_File_Names(C);
-          String_Split_Result := Split( Ada.Strings.Unbounded.To_Unbounded_String(Temp_Base_Name), "-");
+      declare
+        Temp_Data: Prediction_File_Metadata_Type;
+        Temp_Base_Name: String := Ada.Directories.Base_Name( Ada.Strings.Unbounded.To_String(Prediction_File_Names(C)) );
+        String_Split_Result: Strings.List;
+        use type Ada.Strings.Unbounded.Unbounded_String;
+      begin
+        Temp_Data.Input_File_Name := Prediction_File_Names(C);
+        String_Split_Result := Split( Ada.Strings.Unbounded.To_Unbounded_String(Temp_Base_Name), "-");
 
-          if Strings.Length(String_Split_Result) /= 2 or else
-            ( Strings.First_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String or
-              Strings.Last_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String) then
-            Print_Error("Wrong name of input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
-            Print_More("Expected name format for prediction files is: Challenge_Name-Forecaster_Name.Predictions " &
-              "(use character '-' as delimiter)");
-            Program_Parameter.Current_Program_Status := Failure;
-            return;
-          end if;
+        if Strings.Length(String_Split_Result) /= 2 or else
+          ( Strings.First_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String or
+            Strings.Last_Element(String_Split_Result) = Ada.Strings.Unbounded.Null_Unbounded_String) then
+          Print_Error("Wrong name of input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
+          Print_More("Expected name format for prediction files is: Challenge_Name-Forecaster_Name.Predictions " &
+            "(use character '-' as delimiter)");
+          Program_Parameter.Current_Program_Status := Failure;
+          return;
+        end if;
 
-          Temp_Data.Challenge_Name := Strings.First_Element(String_Split_Result);
-          Temp_Data.Forecaster_Name := Strings.Last_Element(String_Split_Result);
-          Prediction_Files_Data.Append(Prediction_File_Metadata, Temp_Data);
+        Temp_Data.Challenge_Name := Strings.First_Element(String_Split_Result);
+        Temp_Data.Forecaster_Name := Strings.Last_Element(String_Split_Result);
+        Prediction_Files_Data.Append(Prediction_File_Metadata, Temp_Data);
 
         if not Name_To_Table_Index_Maps.Contains(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => Temp_Data.Challenge_Name) then
           Print_Error("Unknown challenge name in input file: " & Ada.Strings.Unbounded.To_String(Temp_Data.Input_File_Name));
@@ -262,7 +286,7 @@ package body Forecasts is
             Key => Temp_Data.Forecaster_Name,
             New_Item => DUMMY_INDEX);
         end if;
-      end;
+      end; -- end declare
 
     end loop;
 
@@ -271,7 +295,45 @@ package body Forecasts is
       Print_Delimiter;
     end if;
 
-    --Test.Test_String_Split;
+    declare
+      Current_Challenge_Index: Positive := 1;
+      use Name_To_Table_Index_Maps;
+    begin
+
+      Number_Of_Challenges := Length(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map);
+      Table_Index_To_Name_Vectors.Reserve_Capacity(Forecasting_Challenge_Table.Challenge_Names, Number_Of_Challenges);
+
+      for C in Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map.Iterate loop
+        Replace_Element(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, C, Current_Challenge_Index);
+        Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
+        Current_Challenge_Index := Current_Challenge_Index + 1;
+        Table_Index_To_Name_Vectors.Append(Forecasting_Challenge_Table.Challenge_Names, Key(C));
+      end loop;
+
+    end; -- end declare
+
+    Initial_Challenge_Table_Column := Challenges.To_Vector(Initial_Forecasting_Challenge, Number_Of_Challenges);
+    Forecasting_Challenge_Table.Outcomes := Initial_Challenge_Table_Column;
+
+    declare
+      Current_Forecaster_Index: Positive := 1;
+      use Name_To_Table_Index_Maps;
+    begin
+
+      Number_Of_Forecasters := Length(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map);
+      Table_Index_To_Name_Vectors.Reserve_Capacity(Forecasting_Challenge_Table.Forecaster_Names, Number_Of_Forecasters);
+
+      for C in Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map.Iterate loop
+        Replace_Element(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map, C, Current_Forecaster_Index);
+        Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
+        Current_Forecaster_Index := Current_Forecaster_Index + 1;
+        Table_Index_To_Name_Vectors.Append(Forecasting_Challenge_Table.Forecaster_Names, Key(C));
+      end loop;
+
+    end; -- end declare
+
+    Forecasting_Challenge_Table.Overall_Score_Results := Forecasting_Score_Records.To_Vector(Initial_Score_Record, Number_Of_Forecasters);
+    Forecasting_Challenge_Table.Forecaster_Predictions := Challenge_Table_Columns.To_Vector(Initial_Challenge_Table_Column, Number_Of_Forecasters);
 
     -- populate forecast table
 
@@ -280,7 +342,7 @@ package body Forecasts is
 
   end Init_Forecasting_Challenge_Table;
 
-
+--##########################################################################################################################
   procedure Print_Error(Error_Message: in String) is
   begin
     Ada.Text_IO.Put_Line("Error: " & Error_Message);

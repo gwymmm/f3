@@ -56,12 +56,12 @@ private
 
   type Forecasting_Score_Record is
     record
-      Brier_Score: Float_Type;
+      Brier_Score: Float_Type := 0.0;
 
       -- three component decomposition
-      Variability_Index: Float_Type;
-      Calibration_Index: Float_Type;
-      Discrimination_Index: Float_Type;
+      Variability_Index: Float_Type := 0.0;
+      Calibration_Index: Float_Type := 0.0;
+      Discrimination_Index: Float_Type := 0.0;
     end record;
 
   type Forecasting_Question is
