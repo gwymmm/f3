@@ -1,8 +1,8 @@
 with Ada.Directories;
 with Ada.Directories.Hierarchical_File_Names;
-with Ada.Text_IO;
 with Forecasts.Lexer;
 with Forecasts.Test;
+with Ada.Strings.Fixed;
 
 package body Forecasts is
 
@@ -130,6 +130,8 @@ package body Forecasts is
     if Program_Parameter.Current_Program_Status = Failure then
       return;
     end if;
+
+    Print_Forecasting_Challenge_Table(Program_Parameter, Forecasting_Challenge_Table);
 
   end Evaluate_Forecasts;
 
@@ -295,6 +297,7 @@ package body Forecasts is
       Print_Delimiter;
     end if;
 
+    -- populate forecast table
     declare
       Current_Challenge_Index: Positive := 1;
       use Name_To_Table_Index_Maps;
@@ -305,7 +308,7 @@ package body Forecasts is
 
       for C in Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map.Iterate loop
         Replace_Element(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, C, Current_Challenge_Index);
-        Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
+        -- Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
         Current_Challenge_Index := Current_Challenge_Index + 1;
         Table_Index_To_Name_Vectors.Append(Forecasting_Challenge_Table.Challenge_Names, Key(C));
       end loop;
@@ -325,7 +328,7 @@ package body Forecasts is
 
       for C in Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map.Iterate loop
         Replace_Element(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map, C, Current_Forecaster_Index);
-        Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
+        -- Print_Info("Processing node: key -> " & Ada.Strings.Unbounded.To_String(Key(C)) & ", value -> " & Element(C)'Image);
         Current_Forecaster_Index := Current_Forecaster_Index + 1;
         Table_Index_To_Name_Vectors.Append(Forecasting_Challenge_Table.Forecaster_Names, Key(C));
       end loop;
@@ -335,7 +338,8 @@ package body Forecasts is
     Forecasting_Challenge_Table.Overall_Score_Results := Forecasting_Score_Records.To_Vector(Initial_Score_Record, Number_Of_Forecasters);
     Forecasting_Challenge_Table.Forecaster_Predictions := Challenge_Table_Columns.To_Vector(Initial_Challenge_Table_Column, Number_Of_Forecasters);
 
-    -- populate forecast table
+    Forecasting_Challenge_Table.Number_Of_Forecasters := Positive(Number_Of_Forecasters);
+    Forecasting_Challenge_Table.Number_Of_Challenges := Positive(Number_Of_Challenges);
 
     Program_Parameter.Current_Program_Status := Success;
     return;
@@ -343,6 +347,67 @@ package body Forecasts is
   end Init_Forecasting_Challenge_Table;
 
 --##########################################################################################################################
+
+  procedure Print_Forecasting_Challenge_Table(Program_Parameter: in out Program_Parameter_Type;
+                                              Forecasting_Challenge_Table: in Forecasting_Challenge_Table_Type) is
+
+    use Ada.Strings.Fixed;
+    use Ada.Text_IO;
+    Overall_Score_Results_Row_Name: constant String := "ALL";
+    Row_Names_Column_Width: Natural := Overall_Score_Results_Row_Name'Length;
+
+    -- number format is ' 1.123' and consists of 6 characters
+
+    Initial_Column_Width: constant Natural := 6;
+    Empty_Entry_Symbol: constant String := " /    ";
+    Column_Delimiter: constant String := "  ";
+
+    type Column_Widths_Type is array (Positive range <>) of Positive;
+    Column_Widths: Column_Widths_Type(1 .. Forecasting_Challenge_Table.Number_Of_Forecasters);
+
+  begin
+
+    Float_Type_IO.Default_Fore := 2;
+    Float_Type_IO.Default_Aft := 3;
+    Float_Type_IO.Default_Exp := 0;
+
+    for N of Forecasting_Challenge_Table.Challenge_Names loop
+      if Ada.Strings.Unbounded.Length(N) > Row_Names_Column_Width then
+        Row_Names_Column_Width := Ada.Strings.Unbounded.Length(N);
+      end if;
+    end loop;
+
+    -- print table header
+    Put( ( Row_Names_Column_Width * " " ) & Column_Delimiter);
+
+    for K in 1 .. Forecasting_Challenge_Table.Number_Of_Forecasters loop
+
+      declare
+        Column_Name: constant Ada.Strings.Unbounded.Unbounded_String
+            := Table_Index_To_Name_Vectors.Element(Forecasting_Challenge_Table.Forecaster_Names, K);
+        Name_Length: constant Natural := Ada.Strings.Unbounded.Length(Column_Name);
+      begin
+
+        Put( Ada.Strings.Unbounded.To_String(Column_Name) );
+
+        if Name_Length > Initial_Column_Width then
+          Column_Widths(K) := Name_Length;
+        else
+          Column_Widths(K) := Initial_Column_Width;
+          Put( (Initial_Column_Width - Name_Length) * " " );
+        end if;
+
+        if K < Forecasting_Challenge_Table.Number_Of_Forecasters then
+          Put(Column_Delimiter);
+        end if;
+      end; -- end declare
+
+    end loop;
+
+  end Print_Forecasting_Challenge_Table;
+
+--##########################################################################################################################
+
   procedure Print_Error(Error_Message: in String) is
   begin
     Ada.Text_IO.Put_Line("Error: " & Error_Message);

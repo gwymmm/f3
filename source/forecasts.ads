@@ -2,6 +2,7 @@ with Ada.Strings.Unbounded;
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Vectors;
 with Ada.Containers.Ordered_Maps;
+with Ada.Text_IO;
 
 package Forecasts is
 
@@ -20,6 +21,9 @@ package Forecasts is
   procedure Init_Forecasting_Challenge_Table(Input_Folder_Name: in String;
                                              Program_Parameter: in out Program_Parameter_Type;
                                              Forecasting_Challenge_Table: out Forecasting_Challenge_Table_Type);
+
+  procedure Print_Forecasting_Challenge_Table(Program_Parameter: in out Program_Parameter_Type;
+                                              Forecasting_Challenge_Table: in Forecasting_Challenge_Table_Type);
 
 private
 
@@ -51,6 +55,8 @@ private
   package Outcome_Files_Data is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Outcome_File_Metadata_Type, "=" => "=");
 
   type Float_Type is digits 5;
+
+  package Float_Type_IO is new Ada.Text_IO.Float_IO(Num => Float_Type);
 
   package Floats is new Ada.Containers.Doubly_Linked_Lists(Element_Type => Float_Type, "=" => "=");
 
@@ -97,6 +103,9 @@ private
 
   type Forecasting_Challenge_Table_Type is
     record
+
+      Number_Of_Forecasters: Positive;
+      Number_Of_Challenges: Positive;
 
       Forecaster_Predictions: Challenge_Table_Columns.Vector;
       Outcomes: Challenges.Vector;
