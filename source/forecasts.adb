@@ -159,6 +159,10 @@ package body Forecasts is
       Challenge_Questions => Forecasting_Questions.Empty_List,
       Score_Results => Initial_Score_Record);
 
+    Initial_Outcome_Record: constant Outcome_Type :=
+      (Outcome_File_Name => Ada.Strings.Unbounded.To_Unbounded_String("???"),
+      Challenge_Questions => Forecasting_Questions.Empty_List);
+
     Initial_Challenge_Table_Column: Challenges.Vector;
 
     use type Ada.Containers.Count_Type;
@@ -316,7 +320,7 @@ package body Forecasts is
     end; -- end declare
 
     Initial_Challenge_Table_Column := Challenges.To_Vector(Initial_Forecasting_Challenge, Number_Of_Challenges);
-    Forecasting_Challenge_Table.Outcomes := Initial_Challenge_Table_Column;
+    Forecasting_Challenge_Table.Realized_Outcomes := Outcomes.To_Vector(Initial_Outcome_Record, Number_Of_Challenges);
 
     declare
       Current_Forecaster_Index: Positive := 1;
@@ -341,6 +345,40 @@ package body Forecasts is
     Forecasting_Challenge_Table.Number_Of_Forecasters := Positive(Number_Of_Forecasters);
     Forecasting_Challenge_Table.Number_Of_Challenges := Positive(Number_Of_Challenges);
 
+    declare
+      Current_Index: Positive;
+    begin
+      for E of Outcome_File_Metadata loop
+        Current_Index := Name_To_Table_Index_Maps.Element(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => E.Challenge_Name);
+        Forecasting_Challenge_Table.Realized_Outcomes(Current_Index).Outcome_File_Name := E.Input_File_Name;
+      end loop;
+    end; -- end declare
+
+    declare
+      Current_Row_Index: Positive;
+      Current_Col_Index: Positive;
+    begin
+      for E of Prediction_File_Metadata loop
+
+        Current_Row_Index := Name_To_Table_Index_Maps.Element(Forecasting_Challenge_Table.Challenge_Name_To_Idx_Map, Key => E.Challenge_Name);
+        Current_Col_Index := Name_To_Table_Index_Maps.Element(Forecasting_Challenge_Table.Forecaster_Name_To_Idx_Map, Key => E.Forecaster_Name);
+
+        if Forecasting_Challenge_Table.Forecaster_Predictions(Current_Col_Index)(Current_Row_Index).Questions_Answered then
+          Print_Error("Duplicate found for forecaster " & Ada.Strings.Unbounded.To_String(E.Forecaster_Name) & " and challenge " &
+            Ada.Strings.Unbounded.To_String(E.Challenge_Name));
+          Print_More("Above forecaster and challenge combination is already defined in file: " &
+            Ada.Strings.Unbounded.To_String(Forecasting_Challenge_Table.
+                                              Forecaster_Predictions(Current_Col_Index)(Current_Row_Index).Prediction_File_Name));
+          Program_Parameter.Current_Program_Status := Failure;
+          return;
+        else
+          Forecasting_Challenge_Table.Forecaster_Predictions(Current_Col_Index)(Current_Row_Index).Questions_Answered := True;
+          Forecasting_Challenge_Table.Forecaster_Predictions(Current_Col_Index)(Current_Row_Index).Prediction_File_Name := E.Input_File_Name;
+        end if;
+
+      end loop;
+    end; -- end declare
+
     Program_Parameter.Current_Program_Status := Success;
     return;
 
@@ -359,7 +397,7 @@ package body Forecasts is
     -- number format is ' 1.123' and consists of 6 characters
 
     Initial_Column_Width: constant Natural := 6;
-    Empty_Entry_Symbol: constant String := " /    ";
+    Empty_Entry_Symbol: constant String := " -    ";
     Column_Delimiter: constant String := "  ";
 
     type Column_Widths_Type is array (Positive range <>) of Positive;
@@ -419,11 +457,11 @@ package body Forecasts is
 
         for J in 1 .. Forecasting_Challenge_Table.Number_Of_Forecasters loop
 
-          --if Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Questions_Answered then
-          --null;
-          --end if;
-
-          Float_Type_IO.Put(Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Score_Results.Brier_Score);
+          if Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Questions_Answered then
+            Float_Type_IO.Put(Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Score_Results.Brier_Score);
+          else
+            Put(Empty_Entry_Symbol);
+          end if;
 
           if J < Forecasting_Challenge_Table.Number_Of_Forecasters then
             Put( (Column_Widths(J) - Initial_Column_Width) * " " );
@@ -434,6 +472,24 @@ package body Forecasts is
         New_Line(2);
       end loop;
     end; -- end declare
+
+    Put(Row_Names_Column_Width * "-");
+    New_Line(2);
+
+    Put( Overall_Score_Results_Row_Name );
+    Put( ( Row_Names_Column_Width - Overall_Score_Results_Row_Name'Length ) * " " );
+    Put( Column_Delimiter );
+
+    for L in 1 .. Forecasting_Challenge_Table.Number_Of_Forecasters loop
+
+      Float_Type_IO.Put(Forecasting_Challenge_Table.Overall_Score_Results(L).Brier_Score);
+
+      if L < Forecasting_Challenge_Table.Number_Of_Forecasters then
+        Put( (Column_Widths(L) - Initial_Column_Width) * " " );
+        Put(Column_Delimiter);
+      end if;
+
+    end loop;
 
   end Print_Forecasting_Challenge_Table;
 

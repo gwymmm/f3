@@ -86,8 +86,17 @@ private
       Score_Results: Forecasting_Score_Record;
     end record;
 
+  type Outcome_Type is
+    record
+      Outcome_File_Name: Ada.Strings.Unbounded.Unbounded_String;
+      Challenge_Questions: Forecasting_Questions.List;
+    end record;
+
   package Challenges is new Ada.Containers.Vectors(Index_Type => Positive,
     Element_Type => Forecasting_Challenge_Type, "=" => "=");
+
+  package Outcomes is new Ada.Containers.Vectors(Index_Type => Positive,
+    Element_Type => Outcome_Type, "=" => "=");
 
   package Challenge_Table_Columns is new Ada.Containers.Vectors(Index_Type => Positive,
     Element_Type => Challenges.Vector, "=" => Challenges."=");
@@ -108,7 +117,7 @@ private
       Number_Of_Challenges: Positive;
 
       Forecaster_Predictions: Challenge_Table_Columns.Vector;
-      Outcomes: Challenges.Vector;
+      Realized_Outcomes: Outcomes.Vector;
 
       Overall_Score_Results: Forecasting_Score_Records.Vector;
 
