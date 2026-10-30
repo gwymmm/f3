@@ -394,15 +394,46 @@ package body Forecasts is
           Column_Widths(K) := Name_Length;
         else
           Column_Widths(K) := Initial_Column_Width;
-          Put( (Initial_Column_Width - Name_Length) * " " );
         end if;
 
         if K < Forecasting_Challenge_Table.Number_Of_Forecasters then
+          Put( (Column_Widths(K) - Name_Length) * " " );
           Put(Column_Delimiter);
         end if;
       end; -- end declare
 
     end loop;
+
+    New_Line(2);
+
+    declare
+      Current_Challenge_Name: Ada.Strings.Unbounded.Unbounded_String;
+    begin
+
+      for I in 1 .. Forecasting_Challenge_Table.Number_Of_Challenges loop
+
+        Current_Challenge_Name := Forecasting_Challenge_Table.Challenge_Names(I);
+        Put( Ada.Strings.Unbounded.To_String( Current_Challenge_Name ) );
+        Put( ( Row_Names_Column_Width - Ada.Strings.Unbounded.Length(Current_Challenge_Name) ) * " " );
+        Put( Column_Delimiter );
+
+        for J in 1 .. Forecasting_Challenge_Table.Number_Of_Forecasters loop
+
+          --if Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Questions_Answered then
+          --null;
+          --end if;
+
+          Float_Type_IO.Put(Forecasting_Challenge_Table.Forecaster_Predictions(J)(I).Score_Results.Brier_Score);
+
+          if J < Forecasting_Challenge_Table.Number_Of_Forecasters then
+            Put( (Column_Widths(J) - Initial_Column_Width) * " " );
+            Put(Column_Delimiter);
+          end if;
+
+        end loop;
+        New_Line(2);
+      end loop;
+    end; -- end declare
 
   end Print_Forecasting_Challenge_Table;
 
